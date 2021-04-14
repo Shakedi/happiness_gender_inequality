@@ -1,0 +1,5 @@
+term,estimate
+(Intercept),7.73807888215851
+perc_agree,-5.492888862643483
+GenderMale,-0.05706485258455299
+perc_agree:GenderMale,1.4795256115007809
