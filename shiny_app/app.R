@@ -100,19 +100,27 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                # examines questions asked in the world value survey
                
                tabPanel("World Value Survey",
-                        sidebarPanel(h3("Questions from the WVS examining Gender
-                           equality views:"),
+                        h2(strong("World Value Survey (Wave 7: 2017- 2020)")),
+                        br(),
+                        br(),
+                        br(),
+                        sidebarPanel(h3("About the data"),
+                        h5(strong("Questions from the WVS examining Gender
+                           equality views:")),
                         p("In the following questions participants were asked to
-                          rate their level of agreement with the statements. The
-                          scale was:"),
+                          rate their level of agreement with each statement. 
+                          The statements focuse on",
+                          strong("gender equality and women rights")),
+                        p("The scale as following:"),
                         p("1- strongly disagree"),
                         p("2- disagree"),
                         p("3 - agree"),
                         p("4 - strongly agree"),
-                        p("To show a more interpertable trend I choose to simplify
-                          the answers to agree or disagree, and calculate the
-                          percent of who people agreed/ disagreed in each country
-                          and gender.")),
+                        p("To compare level of agreement across countries and
+                          gender I combined responds of strongly agree and agree
+                          to one caterory as well as strongly disagree and disagree.
+                          Then I calculated the percent of people who agreed by 
+                          country and gender.")),
                         br(),
                         
                         # Main Panel
@@ -122,8 +130,13 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                                        choices = questions$Questions,
                                        selected = "When a mother works for pay,
                                        the children suffer."),
-                            plotOutput("question_plot")
+                            plotOutput("question_plot"),
+                            br(),
+                            br(),
+                            br(),
+                            br()
                         ),
+                        
                         br(),
                         br(),
                         br(),
@@ -139,20 +152,39 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         br(),
                         br(),
                         br(),
-                        h3("Linear Regression Model"),
+                        h3(strong("Linear Regression Model - 
+                                  Relationship between Gender Inequality and Freedom")),
                         br(),
                         p("In the following model I examine the relationship
                           between precentage of agreement with the statements
-                          above and percieved feeling of control and freedom
+                          above and perceived feelings of control and freedom
                           to make life choices. Participants in the World Value 
-                          Survet were asked to rate from 1 to 10 feeling of
-                          control and free choice in life. I calculated the average
-                          response to this question by gender and country and used 
-                          the results in the regression model."),
+                          Survey were asked to rate", strong("feelings of
+                          control and free choice in life from 1 to 10."),
+                          "I calculated the average response to this question by
+                          gender and country and used the results in the
+                          regression model. Each point on the graph represents 
+                          the average result of a country by gender.", 
+                          strong("People in countries where the percent of agreement 
+                                 with the statements is higher tend feel less control
+                                 and freedom to make life choices."), "This trend
+                          is observed in both genders."),
+                        p("The Equation for the Regression Model:"),
+                        withMathJax('$$ freedom_i = \\beta_0 + \\beta_1agreement_i + 
+                        \\beta_2Male_i + \\beta_3agreement_i*Male_1 +
+                           \\epsilon_i $$'),
+                        p("In the regression table you can find the value of the
+                          coefficients under the Beta column as well as the 95%
+                          confidence interval. Although the data is spread, as 
+                          expected given the number of datapoints, by looking at 
+                          the 95% interval for the agreement coefficient we can 
+                          say that it is far more likely that higher agreement 
+                          percentage is negatively correlated with higher
+                          perceived freedom than the opposite."),
                         br(),
                         br(),
                         splitLayout(cellWidths = c("40%", "60%"),
-                        htmlOutput("inc"),
+                        htmlOutput("regression_gt"),
                         plotOutput("regression_wvs")),
                         ),
                
@@ -288,7 +320,7 @@ server <- function(input, output, session) {
            
    )
    output$regression_wvs <- renderPlot(
-       ggplot(agreement, aes(x = perc_agree, y = Control, color = Gender)) +
+       ggplot(agreement, aes(x = agreement, y = Control, color = Gender)) +
            
            # Use geom_point to show the datapoints. 
            
@@ -315,13 +347,13 @@ server <- function(input, output, session) {
                 x = "Percent of people who agreed",
                 y = "Average Control and Freedom",
                 caption = "Source: World Value Survey (Wave 7)") +
-           theme_dark() +
+           theme_get() +
            theme(legend.position="bottom")
    )
    getPage<-function() {
        return(includeHTML("datasets/regression_wvs.html"))
    }
-   output$inc<-renderUI({getPage()})
+   output$regression_gt<-renderUI({getPage()})
 }
 
 # Run the application 

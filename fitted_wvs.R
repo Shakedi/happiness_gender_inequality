@@ -87,11 +87,12 @@ control <- wvs %>%
 # percent of people who agreed with the statements, meaning higher percent
 # agreement higher inequality.
 
-y <- inner_join(control, x, by = c("Gender", "country_territory")) %>% 
+y <- inner_join(control, x, by = c("Gender", "country_territory")) %>%
+  rename(agreement = "perc_agree") %>% 
   write_csv("shiny_app/datasets/agreement_wvs.csv")
 
 fit_y_2 <- stan_glm(data = y,
-                  formula = Control ~ perc_agree*Gender + perc_agree + Gender,
+                  formula = Control ~ agreement*Gender + agreement + Gender,
                   refresh = 0)
 
 # plotting tidy_y_2 model 
@@ -155,7 +156,7 @@ ggplot(y, aes(x = perc_agree, y = Control, color = Gender)) +
        x = "Percent of people who agreed",
        y = "Average Control and Freedom",
        caption = "Source: World Value Survey (Wave 7)") +
-  theme_clean() +
+  theme_get() +
   theme(legend.position="bottom") 
 
 # each dot is the average agreement in a country
