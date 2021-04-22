@@ -1,0 +1,231 @@
+---
+title: "whr_map"
+author: "Shaked Leibovitz"
+date: "4/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(rworldmap)
+library(leaflet)
+library(rstanarm)
+library(broom.mixed)
+library(gtsummary)
+library(ggthemes)
+library(ggdist)
+```
+
+```{r}
+whr_2020 <- read_csv("shiny_app/datasets/whr_clean.csv") %>% 
+  filter(year == 2020) %>% 
+  select(country_name, score, freedom_to_make_life_choices) %>% 
+  mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10)
+```
+
+```{r}
+joinData <- joinCountryData2Map(whr,
+                                joinCode = "NAME",
+                                nameJoinColumn = "country_name")
+
+qpal <- colorNumeric("magma",
+                     joinData$freedom_to_make_life_choices_10, na.color = NA)
+
+freedom_interactive <- leaflet(joinData, 
+                               options = leafletOptions(attributionControl = FALSE,
+                                                        minzoom=1.5)) %>%
+  
+  # I multiplied the score by 10 to create a scale of 1-10 because the original
+  # value is from 0-1 to a boolean question which was averaged
+  # defining the values read when hovering on a country:
+  
+  addPolygons(label= ~stringr::str_c(country_name, ' ',
+                                     as.double(round((freedom_to_make_life_choices_10), digits = 2))),
+              labelOptions= labelOptions(direction = 'auto'),
+              weight=1, color='#333333', opacity=1,
+              fillColor = ~qpal(freedom_to_make_life_choices_10), fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000', weight = 2,
+                bringToFront = TRUE, sendToBack = TRUE)
+  ) %>%
+  addLegend(values = ~freedom_to_make_life_choices_10,
+            opacity = 1, pal = qpal, 
+            title = htmltools::HTML("Freedom to Make Life Choices<br>2020 World Happiness Report <h5>(from 1- lowest to 10- highest)</h5>"))  
+
+# display visualization
+
+freedom_interactive
+```
+
+```{r}
+whr_2020 %>% 
+  ggplot(aes(x = freedom_to_make_life_choices_10, y = score)) +
+  geom_point()
+```
+
+```{r}
+whr <- read_csv("shiny_app/datasets/whr_clean.csv") 
+
+whr %>% 
+  mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10) %>%
+  drop_na(freedom_to_make_life_choices_10, score) %>% 
+  ggplot(aes(x = freedom_to_make_life_choices_10, y = score)) +
+  geom_point() +
+  geom_smooth(formula = y ~ x, method = 'gam') +
+  labs(title = "Happiness score in Relation to Freedom To Make Life Choices",
+       x = " Freedom To Make Life Choices",
+       y = "Happiness Score",
+       caption = "Source: World Happiness Report (2016-2020)") +
+  theme_classic()
+```
+```{r}
+whr_fit <- whr %>%
+  mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10) %>%
+  select(freedom_to_make_life_choices_10, score, country_name) %>%
+  drop_na()
+
+fit_1 <- stan_glm(data = whr_fit,
+         formula = score ~ freedom_to_make_life_choices_10,
+         refresh = 0)
+
+
+newobs <- tibble(freedom_to_make_life_choices_10 = c(1:10),
+                 names = c(1:10))
+                 
+# predicting happiness using the freedom score
+
+freedom_happiness <- posterior_predict(fit_1, newobs) %>% 
+  as_tibble() %>% 
+  set_names(newobs$names) %>%  
+  pivot_longer(cols = everything(),
+               names_to = "Freedom",
+               values_to = "Happiness")  %>% 
+  ggplot(aes(x = Happiness, y = fct_reorder(Freedom, Happiness))) +
+  stat_halfeye(aes(fill = stat(cut_cdf_qi(cdf, .width = c(.95, 1)))),
+               show.legend = FALSE) +
+  scale_fill_calc() +
+  scale_x_continuous(n.breaks = 9) +
+  labs(title = "Predicted Happiness Score Given a Specific Freedom Score",
+       subtitle = "Higher score in 'freedom to make life choices' is correlated to higher happiness score.",
+       x = "Happiness Score",
+       y = "Freedom Score",
+       caption = "Source: World Happiness Report") +
+  theme_classic()
+
+# ggsave(plot = freedom_happiness, filename = "shiny_app/datasets/freedom_happiness.png")  
+
+```
+
+```{r}
+# joining the two datasets
+
+Agreement <- read_csv(file = "shiny_app/datasets/total_agreement_fix.csv") %>% 
+  rename(country_name = country_territory) %>% 
+  rename(agreement = percent_agree)
+
+join_data <- inner_join(Agreement, whr_fit, by = "country_name") %>% 
+  rename(freedom = freedom_to_make_life_choices_10)
+
+fit_2 <- stan_glm(data = join_data,
+         formula = score ~ freedom + agreement +
+            agreement*freedom,
+         refresh = 0)
+
+# The newobs for agreement were chosen by the highest percent agreement which
+# was in Pakistan and the lowest percent agreement which was New Zealand
+
+newobs_3 <- expand_grid(agreement = c(0.06, 0.7),
+                       freedom = (1:10)) %>% 
+            mutate(names =  paste(agreement, freedom,
+                                 sep = "_"))
+newobs_3
+
+join_data
+
+posterior_predict(fit_2, newobs_3) %>% 
+  as_tibble() %>% 
+  set_names(newobs_3$names) %>% 
+  pivot_longer(cols = everything(),
+               values_to = "Happiness",
+               names_to = c("Agreement", "Freedom"),
+               names_sep = "_") %>% 
+  write_csv(file = "shiny_app/datasets/happiness_predict.csv")
+
+pp <- posterior_predict(fit_2, newobs_3) %>% 
+  as_tibble() %>% 
+  set_names(newobs_3$names) %>% 
+  pivot_longer(cols = everything(),
+               values_to = "Happiness",
+               names_to = c("Agreement", "Freedom"),
+               names_sep = "_")
+
+order <- pp$Happiness
+
+  pp %>%  
+  ggplot(aes(x = Happiness, y = fct_reorder(Freedom, order), fill = Agreement)) +
+  stat_slab(alpha = 0.8) +
+  labs(title = "Predicted Happiness Given a Freedom Score and\nPercent Agreement With Gender Inequality",
+       subtitle = "Happiness is positively correlated with Freedom when Gender Inequality is low",
+       x = "Happiness Score",
+       y = "Freedom Score",
+       caption = "Sorces: World Happiness Report,
+       World Value Survey") +
+  scale_fill_discrete(name = "Percent Agreement\nwith Gender Inequality\nStatements", labels = c("6%", "70%"),
+                      type = c("royalblue", "paleturquoise")) +
+  scale_x_continuous(n.breaks = 9) +
+  theme_classic()
+```
+
+
+
+
+```{r}
+# Creating the regression table I will use it the app
+
+regression_hapinness_agreement <- tbl_regression(fit_2, 
+               intercept = TRUE, 
+               estimate_fun = function(x) style_sigfig(x, digits = 3)) %>% 
+  as_gt() %>% 
+  tab_header(title = md("**Linear Regression Model**"),
+             subtitle = "How Freedom and Gender Inequality Predict Happiness") %>% 
+  tab_source_note("Sources: World Value Survey (Wave 7)\nWorld Happiness Report (2016-2021)")
+  
+
+regression_hapinness_agreement %>% 
+  gtsave("regression_happiness_agreement.html", inline_css = TRUE)
+  
+  
+```
+
+
+```{r}
+# plotting agreement by country
+
+Agreement %>% 
+  ggplot(aes(x = agreement, y = fct_reorder(country_name, agreement))) +
+  geom_point() 
+
+
+whr_2019 <- read_csv("shiny_app/datasets/whr_clean.csv") %>% 
+  filter(year == 2019) %>% 
+  select(country_name, score, freedom_to_make_life_choices) %>% 
+  mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10)
+
+whr_2019 %>% 
+  inner_join(Agreement, by = "country_name") %>% 
+  ggplot(aes(x = agreement, y = fct_reorder(country_name, agreement))) +
+  geom_col(aes(fill = score)) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1),
+                     n.breaks = 12) +
+  labs(title = "Percent Agreement with Gender Inequality Statements\n and The Happiness Score",
+       fill = "Happiness Score\nFrom 1 to 10",
+       x = "Percent of People Agreed",
+       y = NULL,
+       caption = "Sorces: World Happiness Report 2019,
+       World Value Survey (Wave 7)") +
+  theme_classic()
+```
+

@@ -8,6 +8,8 @@ library(ggdist)
 library(gt)
 library(broom.mixed)
 library(gtsummary)
+library(rworldmap)
+library(leaflet)
 
 
 # Those are the datasets that I will use in this project, after I cleaned them
@@ -32,7 +34,13 @@ wvs <- read_csv("datasets/wvs_clean.csv",
                     q48 = col_double(),
                     q49 = col_double(),
                     Gender = col_character()
-                ))
+                )) %>% 
+    
+    # because for questions 35, and 33 the answer 3 is neither agree or disagree
+    # I am filtering these answers out. 
+    
+    filter(q35p != 3) %>% 
+    filter(q33p != 3)
 
 # World Happiness Report
 
@@ -74,7 +82,9 @@ questions<- tibble("q28p" =
     pivot_longer(values_to = "Questions",
                  names_to = "Numbers",
                  cols = everything())
-# data for fitted model wvs
+
+# data for fitted model wvs - agreement by gender and country. I cleaned it in 
+# the file fitted_wvs.R
 
 agreement <- read_csv("datasets/agreement_wvs.csv")
 
@@ -88,6 +98,25 @@ Female_intercept <- fitted_wvs$estimate[1]
 Female_slope <- fitted_wvs$estimate[2]
 Male_intercept <- fitted_wvs$estimate[1] + fitted_wvs$estimate[3]
 Male_slope <- fitted_wvs$estimate[2] + fitted_wvs$estimate[4]
+
+# data for the freedom map
+
+whr_2020 <- whr %>% 
+    filter(year == 2020) %>% 
+    select(country_name, score, freedom_to_make_life_choices) %>% 
+    mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10)
+
+# total percent agreement to gender inequality questions (not by gender)
+# I will use this dataset for the model panel. I cleaned in in the file called
+# whr_map.RmD
+
+tot_agreement <- read_csv(file = "datasets/total_agreement_fix.csv") %>% 
+    rename(country_name = country_territory) %>% 
+    rename(agreement = percent_agree)
+
+# the tibble of posterior predict on the tot_agreement and happiness data
+
+happiness_predict <- read_csv("datasets/happiness_predict.csv")
 
 
 # Define UI for application 
@@ -119,18 +148,24 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         p("To compare level of agreement across countries and
                           gender I combined responds of strongly agree and agree
                           to one caterory as well as strongly disagree and disagree.
-                          Then I calculated the percent of people who agreed by 
-                          country and gender.")),
+                          Then I calculated the percent of people who agreed and 
+                          dissagreed by country and gender."),
+                        p("In most questions you can see that women tend to dissagree
+                          more than men do, which is expected due to the fact that 
+                          those statements discriminate women. You can also observe 
+                          is which countries the precent agreement is usually high
+                          and in which it is usually low.")),
                         br(),
                         
                         # Main Panel
+                        
                         mainPanel(
                             selectInput(inputId = "selected_question",
                                        label = "Choose a statement:",
                                        choices = questions$Questions,
                                        selected = "When a mother works for pay,
                                        the children suffer."),
-                            plotOutput("question_plot"),
+                            plotOutput("question_plot",height = "600px"),
                             br(),
                             br(),
                             br(),
@@ -171,16 +206,17 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                           is observed in both genders."),
                         p("The Equation for the Regression Model:"),
                         withMathJax('$$ freedom_i = \\beta_0 + \\beta_1agreement_i + 
-                        \\beta_2Male_i + \\beta_3agreement_i*Male_1 +
+                        \\beta_2Male_i + \\beta_3agreement_i*Gender_1 +
                            \\epsilon_i $$'),
                         p("In the regression table you can find the value of the
                           coefficients under the Beta column as well as the 95%
-                          confidence interval. Although the data is spread, as 
-                          expected given the number of datapoints, by looking at 
-                          the 95% interval for the agreement coefficient we can 
-                          say that it is far more likely that higher agreement 
-                          percentage is negatively correlated with higher
-                          perceived freedom than the opposite."),
+                          confidence interval. Although the data is spread,
+                          by looking at the 95% interval for the agreement
+                          coefficient we can say that it is far more likely that
+                          higher agreement percentage is negatively correlated
+                          with higher perceived freedom than the opposite, although
+                          the option that it has no effect is also a possibility
+                          as the 95% confidence interval includes zero."),
                         br(),
                         br(),
                         splitLayout(cellWidths = c("40%", "60%"),
@@ -192,9 +228,8 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                
                tabPanel("World Happiness Report",
                         h3("World Happiness Report Data"),
-                        p("The happiness score is the average value for:
-                          how would you rate your happiness from 1 to 10?"),
-                        br(),
+                        p("The happiness score is the average value for:",
+                        strong("how would you rate your happiness from 1 to 10?")),
                         mainPanel(
                             selectInput(inputId = "selected_country",
                                         label = "Choose Countries:",
@@ -202,9 +237,52 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                                         selected = c("Sweden", "Egypt",
                                                      "United States"),
                                         multiple = TRUE),
-                            plotOutput("happiness_plot")
+                            plotOutput("happiness_plot",
+                                       width = "750px",
+                                       height = "350px"),
+                            br(),
+                            h3("Freedom by Country"),
+                            p("In the following map you can see the average value
+                              by country the question -", strong("How whould you
+                              rate your freedom to make like choices?"), "scale 
+                              1 to 10."),
+                            br(),
+                            leafletOutput(outputId = "freedom_map",
+                                          width = "750px",
+                                          height = "350px"),
+                        ),
+                        sidebarPanel(h3("About The Data:"),
+                                     p("The World Happiness Report is a survey
+                                       that measures and ranks global happiness
+                                       of 156 countries by how happy their
+                                       citizens perceive themselves to be.
+                                       Participants are asked to answer several
+                                       questions. In this project I focused of
+                                       participants level of happiness (which is
+                                       scaled from 1 to 10). And their percieved
+                                       freedom to make life choices, which is
+                                       a binary question that was averaged
+                                       (which I scaled to also be from 1 to 10)."),
                         )
-                        )
+                        ),
+               
+               # third panel- the main model and connecting the datasets
+               
+               tabPanel("Model",
+                        mainPanel(
+                        plotOutput("happiness_agreement", height = "600px",
+                                   width = "500px"),
+                        plotOutput("predicted_happiness")),
+                        sidebarPanel(h3("Combining The Peices:"),
+                                     p("In this page I will explore the connection
+                                       between opinions of gender inequality,
+                                       measured by percent of agreement to
+                                       inequality questions explored in the
+                                       World Value Survey tab, and the perceived
+                                       happiness and freedom to make life choices 
+                                       measured from questions asked in the World
+                                       Happiness Report."))    
+               )
     )
 )
 
@@ -258,7 +336,7 @@ server <- function(input, output, session) {
             mutate(perc_neg = ifelse(agreement == "Disagree", perc*(-1), perc)) %>% 
             ggplot(aes(y = fct_reorder(country_territory, perc_neg), x = perc,
                        fill = Gender)) +
-            geom_col(position = position_dodge(width = 0.7)) + 
+            geom_col(width = 0.8, position = "dodge") + 
             facet_wrap(~ agreement) +
             labs(title = "Agree or Disagree:", 
                  fill = "Gender",
@@ -266,7 +344,8 @@ server <- function(input, output, session) {
                  y = NULL) + 
             scale_fill_manual(values = c("#FF9999", "#56B4E9")) +
             scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
-            theme_dark()
+            theme_dark() +
+            theme(axis.text.y = element_text(size = 11))
         {
             return(tbl)
             }
@@ -322,15 +401,16 @@ server <- function(input, output, session) {
    output$regression_wvs <- renderPlot(
        ggplot(agreement, aes(x = agreement, y = Control, color = Gender)) +
            
-           # Use geom_point to show the datapoints. 
+           # Use geom_point to show the data points. 
            
            geom_point() +
            scale_color_manual(values = c("#FF9999", "#56B4E9")) +
            
-           # Create a geom_abline object for the female intercept and slope. Set the
-           # intercept qual to our previously created female_intercept, while setting
-           # slope equal to our previously created female_slope. The color call is for
-           # coral, to match the colors used by tidyverse for geom_point().
+           # Create a geom_abline object for the female intercept and slope. Set
+           # the intercept qual to our previously created female_intercept,
+           # while setting slope equal to our previously created female_slope.
+           # The color call is for coral, to match the colors used by tidyverse
+           # for geom_point().
            
            geom_abline(intercept = Female_intercept,
                        slope = Female_slope, 
@@ -350,10 +430,93 @@ server <- function(input, output, session) {
            theme_get() +
            theme(legend.position="bottom")
    )
-   getPage<-function() {
+   
+   # a function the needs to run to get an html file 
+   
+   getPage <- function() {
        return(includeHTML("datasets/regression_wvs.html"))
    }
-   output$regression_gt<-renderUI({getPage()})
+   
+   # calling the regression html file
+   
+   output$regression_gt <- renderUI({getPage()})
+   
+   # the code for the interactive freedom map
+   
+   output$freedom_map <- renderLeaflet({
+       joinData <- joinCountryData2Map(whr_2020,
+                                       joinCode = "NAME",
+                                       nameJoinColumn = "country_name")
+       qpal <- colorNumeric("magma",
+                            joinData$freedom_to_make_life_choices_10,
+                            na.color = NA)
+       freedom_interactive <- leaflet(joinData, 
+                                      options = leafletOptions(attributionControl = FALSE,
+                                                               minzoom=1.5)) %>%
+           
+           # I multiplied the score by 10 to create a scale of 1-10 because the
+           # original value is from 0-1 to a boolean question which was averaged
+           # defining the values read when hovering on a country:
+           
+           addPolygons(label= ~stringr::str_c(country_name, ' ',
+                        as.double(round((freedom_to_make_life_choices_10),
+                                        digits = 2))),
+                       labelOptions= labelOptions(direction = 'auto'),
+                       weight=1, color='#333333', opacity=1,
+                       fillColor = ~qpal(freedom_to_make_life_choices_10),
+                       fillOpacity = 1,
+                       highlightOptions = highlightOptions(
+                           color='#000000', weight = 2,
+                           bringToFront = TRUE, sendToBack = TRUE)
+           ) %>%
+           addLegend(values = ~freedom_to_make_life_choices_10,
+                     opacity = 1, pal = qpal, 
+                     title = htmltools::HTML("Freedom to Make Life Choices<br>2020 World Happiness Report <h5>(from 1- lowest to 10- highest)</h5>"))
+       
+   })
+   output$happiness_agreement <- renderPlot(
+       
+       whr %>% 
+           filter(year == 2019) %>% 
+           select(country_name, score, freedom_to_make_life_choices) %>% 
+           mutate(freedom_to_make_life_choices_10 = freedom_to_make_life_choices*10) %>% 
+           inner_join(tot_agreement, by = "country_name") %>% 
+           ggplot(aes(x = agreement, y = fct_reorder(country_name, agreement))) +
+           geom_col(aes(fill = score)) +
+           scale_x_continuous(labels = scales::percent_format(accuracy = 1),
+                              n.breaks = 12) +
+           labs(title = "Percent Agreement with Gender Inequality Statements\n and The Happiness Score",
+                fill = "Happiness Score\nFrom 1 to 10",
+                x = "Percent of People Agreed",
+                y = NULL,
+                caption = "Sorces: World Happiness Report 2019,
+                World Value Survey (Wave 7)") +
+           theme_classic() +
+           theme(axis.text.y = element_text(size = 11))
+   )
+   output$predicted_happiness <- renderPlot(
+       
+       happiness_predict %>%
+           
+           # I get an error : `f` must be a factor (or character vector). when I
+           # use the function with Happines as the second argument.
+           
+           ggplot(aes(x = Happiness, y = fct_reorder(Freedom, Happiness),
+                      fill = Agreement)) +
+           stat_slab(alpha = 0.8) +
+           labs(title = "Predicted Happiness Given a Freedom Score and\nPercent Agreement With Gender Inequality",
+                subtitle = "Happiness is positively correlated with Freedom when Gender Inequality is low",
+                x = "Happiness Score",
+                y = "Freedom Score",
+                caption = "Sorces: World Happiness Report,
+                World Value Survey") +
+           scale_fill_discrete(name = "Percent Agreement\nwith Gender Inequality\nStatements",
+                               labels = c("6%", "70%"),
+                               type = c("royalblue", "paleturquoise")) +
+           scale_x_continuous(n.breaks = 9) +
+           theme_classic()
+   )
+  
 }
 
 # Run the application 

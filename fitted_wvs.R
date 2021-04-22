@@ -7,13 +7,20 @@ library(janitor)
 library(broom.mixed)
 library(gtsummary)
 
-wvs <- read_csv("shiny_app/datasets/wvs_clean.csv")
+wvs <- read_csv("shiny_app/datasets/wvs_clean.csv") 
+
+# because for questions 35, and 33 the answer 3 is neither agree or disagree
+# I am filtering these answers out. 
+
+wvs_fix <- wvs %>% 
+  filter(q35p != 3) %>% 
+  filter(q35p != 3)
 
 #looking at agreement percent in questions: q28p, q29p, q30p, q32p, q33p, q35p
 
 agreement_perc <- function(var){
   
-  tbl <- wvs %>% 
+  tbl <- wvs_fix %>% 
     select(country_territory, Gender, {{var}}) %>%
     drop_na() %>% 
     group_by(Gender, {{var}} , country_territory) %>%
@@ -71,6 +78,9 @@ x <- full_join(q28, q29) %>%
   rowwise() %>% 
   mutate(perc_agree = (perc_28 + perc_29 + perc_30 + perc_32 + perc_33 + perc_35)/6) %>% 
   select(Gender, country_territory, perc_agree) %>% 
+  
+  # because of all the joins I had some values reputations 
+  
   distinct()
 
 control <- wvs %>% 
@@ -94,6 +104,7 @@ y <- inner_join(control, x, by = c("Gender", "country_territory")) %>%
 fit_y_2 <- stan_glm(data = y,
                   formula = Control ~ agreement*Gender + agreement + Gender,
                   refresh = 0)
+
 
 # plotting tidy_y_2 model 
 
@@ -137,7 +148,7 @@ ggplot(y, aes(x = perc_agree, y = Control, color = Gender)) +
   geom_point() +
   
   # Create a geom_abline object for the female intercept and slope. Set the
-  # intercept qual to our previously created female_intercept, while setting
+  # intercept equal to our previously created female_intercept, while setting
   # slope equal to our previously created female_slope. The color call is for
   # coral, to match the colors used by tidyverse for geom_point().
   
@@ -159,5 +170,53 @@ ggplot(y, aes(x = perc_agree, y = Control, color = Gender)) +
   theme_get() +
   theme(legend.position="bottom") 
 
-# each dot is the average agreement in a country
+# each dot is the average agreement in a country by gender. 
+
+# farther cleaning the wvs to get general agreement or disagreement
+
+
+
+# disagree is 0 and agree is 1 to make the analysis easier. 
+
+fcn_1 <- function(x){
+  case_when(x == 1 ~ 0,
+            x == 2 ~ 0,
+            x == 3 ~ 1,
+            x == 4 ~ 1)
+  }
+
+fcn_2 <- function(x){
+  case_when(x == 1 ~ 0,
+            x == 2 ~ 0,
+            x == 4 ~ 1,
+            x == 5 ~ 1)
+}
+
+try <- wvs %>% 
+  select(country_territory, q28p, q29p, q30p, q32p, q33p, q35p) %>%
+  drop_na() %>% 
+  mutate(q28 = fcn_1(q28p),
+         q29 = fcn_1(q29p),
+         q30 = fcn_1(q30p),
+         q32 = fcn_1(q33p),
+         q33 = fcn_2(q33p),
+         q35 = fcn_2(q35p)) %>% 
+  select(country_territory, q28, q29, q30, q32, q33, q35) %>% 
+  drop_na() %>%  
+  rowwise() %>% 
+  
+  # percent agreement of an individual to the questions
+  
+  mutate(agree = (q28 + q29 + q30 + q32 + q33 + q35)/6) %>% 
+  group_by(country_territory) %>% 
+  summarise(tot_agree = sum(agree),
+         tot_pop = n(), .groups = "drop") %>% 
+  mutate(percent_agree = tot_agree/tot_pop) %>% 
+  
+  # The finished dataset consists of the percent agreement for all the questions
+  # by country. And is used in my final model tab. 
+  
+  write_csv("shiny_app/datasets/total_agreement_fix.csv")
+  
+  
 
