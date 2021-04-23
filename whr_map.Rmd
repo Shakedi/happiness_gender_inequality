@@ -229,3 +229,36 @@ whr_2019 %>%
   theme_classic()
 ```
 
+```{r}
+# trying to imitate what I plan on doing in the app:
+
+happiness_predict_try <- read_csv("shiny_app/datasets/happiness_predict.csv") %>% 
+  mutate(Freedom = as.character(Freedom)) %>% 
+  mutate(Agreement = as.character(Agreement))
+
+happiness_predict_try %>% 
+  ggplot(aes(x = Happiness, y = fct_reorder(Freedom, Happiness),
+                      fill = Agreement)) +
+           stat_slab(alpha = 0.8) +
+           labs(title = "Predicted Happiness Given a Freedom Score and\nPercent Agreement With Gender Inequality",
+                subtitle = "Happiness is positively correlated with Freedom when Gender Inequality is low",
+                x = "Happiness Score",
+                y = "Freedom Score",
+                caption = "Sorces: World Happiness Report,
+                World Value Survey") +
+           scale_fill_discrete(name = "Percent Agreement\nwith Gender Inequality\nStatements",
+                               labels = c("6%", "70%"),
+                               type = c("royalblue", "paleturquoise")) +
+           scale_x_continuous(n.breaks = 9) +
+           theme_classic()
+```
+
+```{r}
+happiness_predict_try <- read_csv("shiny_app/datasets/happiness_predict.csv",
+                                  col_types = cols(
+                                    Agreement = col_character(),
+                                    Freedom = col_character(),
+                                    Happiness = col_double()
+))
+```
+

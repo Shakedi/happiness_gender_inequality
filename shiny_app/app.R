@@ -116,8 +116,11 @@ tot_agreement <- read_csv(file = "datasets/total_agreement_fix.csv") %>%
 
 # the tibble of posterior predict on the tot_agreement and happiness data
 
-happiness_predict <- read_csv("datasets/happiness_predict.csv")
-
+happiness_predict <- read_csv("datasets/happiness_predict.csv",
+                              col_types = cols(
+                                  Agreement = col_character(),
+                                  Freedom = col_character(),
+                                  Happiness = col_double()))
 
 # Define UI for application 
 
@@ -127,8 +130,14 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                
                # panel 1
                # examines questions asked in the world value survey
+               # I created two panels within the navBar to make my app more
+               # organized and less packed. 
                
-               tabPanel("World Value Survey",
+               navbarMenu("World Value Survey",
+                          
+               # this panel explores the questions regarding inequality
+               
+               tabPanel("Questions",
                         h2(strong("World Value Survey (Wave 7: 2017- 2020)")),
                         br(),
                         br(),
@@ -167,28 +176,16 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                                        the children suffer."),
                             plotOutput("question_plot",height = "600px"),
                             br(),
-                            br(),
-                            br(),
                             br()
-                        ),
-                        
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
-                        br(),
+                            )),
+               
+                        # the second tab panel is linear regression for 
+                        # for the relation between inequality and freedom. 
+               
+                        tabPanel("Inequality and Freedom",
                         h3(strong("Linear Regression Model - 
-                                  Relationship between Gender Inequality and Freedom")),
+                                  Relationship between Gender Inequality and
+                                  Freedom")),
                         br(),
                         p("In the following model I examine the relationship
                           between precentage of agreement with the statements
@@ -222,7 +219,10 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         splitLayout(cellWidths = c("40%", "60%"),
                         htmlOutput("regression_gt"),
                         plotOutput("regression_wvs")),
-                        ),
+                        br(),
+                        br())
+               
+               ),
                
                # panel 2
                
@@ -250,6 +250,8 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                             leafletOutput(outputId = "freedom_map",
                                           width = "750px",
                                           height = "350px"),
+                            br(),
+                            br()
                         ),
                         sidebarPanel(h3("About The Data:"),
                                      p("The World Happiness Report is a survey
@@ -266,23 +268,51 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         )
                         ),
                
-               # third panel- the main model and connecting the datasets
+               # third panel- the main model and connecting the data-sets
                
                tabPanel("Model",
                         mainPanel(
                         plotOutput("happiness_agreement", height = "600px",
                                    width = "500px"),
-                        plotOutput("predicted_happiness")),
+                        br(),
+                        br(),
+                        h3("The Relation Between Gender Inequality, Perceived
+                           Freedom, and Happiness"),
+                        br(),
+                        p("This linear regression model explores the predicted
+                          happiness score (from 1 to 10) given the perceived
+                          freedom to make life choices (from 1 to 10) for two
+                          levels of gender inequaity.", strong("In Pakistan 69%
+                          of the people surveyed agreed with the ineqaulity
+                          questions, while in New Zealand ony 6% of the people
+                          agreed."), "In my model I included the two extremes
+                          of agreement percentage and predicted the expected
+                          happiness."),
+                        br(),
+                        splitLayout(cellWidths = c("60%", "40%"),
+                        plotOutput("predicted_happiness"),
+                        htmlOutput("regression_happiness_agreement"))),
                         sidebarPanel(h3("Combining The Peices:"),
                                      p("In this page I will explore the connection
                                        between opinions of gender inequality,
                                        measured by percent of agreement to
                                        inequality questions explored in the
                                        World Value Survey tab, and the perceived
-                                       happiness and freedom to make life choices 
+                                       happiness and freedom to make life choices
                                        measured from questions asked in the World
-                                       Happiness Report."))    
+                                       Happiness Report."))
+               ),
+               tabPanel("Model 2",
+                        fluidRow(
+                            column(6,
+                                   plotOutput("predicted_happiness")),
+                            column(4,
+                                   htmlOutput("regression_happiness_agreement"))
+                        )
+                   
                )
+               
+              
     )
 )
 
@@ -428,7 +458,7 @@ server <- function(input, output, session) {
                 y = "Average Control and Freedom",
                 caption = "Source: World Value Survey (Wave 7)") +
            theme_get() +
-           theme(legend.position="bottom")
+           theme(legend.position="bottom") 
    )
    
    # a function the needs to run to get an html file 
@@ -469,6 +499,10 @@ server <- function(input, output, session) {
                            color='#000000', weight = 2,
                            bringToFront = TRUE, sendToBack = TRUE)
            ) %>%
+           
+           # the title is sliding off the page in the code because if I move it
+           # down it it not aligned when publishing. 
+           
            addLegend(values = ~freedom_to_make_life_choices_10,
                      opacity = 1, pal = qpal, 
                      title = htmltools::HTML("Freedom to Make Life Choices<br>2020 World Happiness Report <h5>(from 1- lowest to 10- highest)</h5>"))
@@ -498,9 +532,6 @@ server <- function(input, output, session) {
        
        happiness_predict %>%
            
-           # I get an error : `f` must be a factor (or character vector). when I
-           # use the function with Happines as the second argument.
-           
            ggplot(aes(x = Happiness, y = fct_reorder(Freedom, Happiness),
                       fill = Agreement)) +
            stat_slab(alpha = 0.8) +
@@ -516,6 +547,16 @@ server <- function(input, output, session) {
            scale_x_continuous(n.breaks = 9) +
            theme_classic()
    )
+   
+   # getting the regression table for my second predictive model:
+   
+   getPage <- function() {
+       return(includeHTML("datasets/regression_happiness_agreement.html"))
+   }
+   
+   # calling the regression html file
+   
+   output$regression_happiness_agreement <- renderUI({getPage()})
   
 }
 
