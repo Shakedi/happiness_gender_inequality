@@ -73,8 +73,6 @@ questions<- tibble("q28p" =
                         "A university education is more important for a boy than for a girl.", 
                     "q31p" = 
                         "On the whole, men make better business executives than women do.", 
-                    "q32p" = 
-                        "Being a housewife is just as fulfilling as working for pay.", 
                     "q33p" = 
                         "When jobs are scarce, men should have more right to a job than women.", 
                     "q35p" = 
@@ -126,7 +124,7 @@ happiness_predict <- read_csv("datasets/happiness_predict.csv",
 
 ui <- fluidPage(theme = shinytheme("sandstone"),
 
-    navbarPage("Freedom and Gender Equality",
+    navbarPage("Happiness, Freedom and Gender Equality",
                
                # panel 1
                # examines questions asked in the world value survey
@@ -203,7 +201,7 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                           is observed in both genders."),
                         p("The Equation for the Regression Model:"),
                         withMathJax('$$ freedom_i = \\beta_0 + \\beta_1agreement_i + 
-                        \\beta_2Male_i + \\beta_3agreement_i*Gender_1 +
+                        \\beta_2Male_i + \\beta_3agreement_i*Gender_i +
                            \\epsilon_i $$'),
                         p("In the regression table you can find the value of the
                           coefficients under the Beta column as well as the 95%
@@ -256,59 +254,117 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         sidebarPanel(h3("About The Data:"),
                                      p("The World Happiness Report is a survey
                                        that measures and ranks global happiness
-                                       of 156 countries by how happy their
-                                       citizens perceive themselves to be.
-                                       Participants are asked to answer several
-                                       questions. In this project I focused of
+                                       of", strong("156 countries by how happy their
+                                       citizens perceive themselves to be."),
+                                       "Participants were asked to answer several
+                                       questions. In this project I focused on
                                        participants level of happiness (which is
                                        scaled from 1 to 10). And their percieved
                                        freedom to make life choices, which is
                                        a binary question that was averaged
-                                       (which I scaled to also be from 1 to 10)."),
+                                       (which I scaled to also be from 1 to 10).
+                                       In the map you can see the average value 
+                                       of perceived freedom to make life choices.
+                                       Interesting observation is that in", 
+                                       strong("Saudi Arabia the average freedom
+                                              score is very high- 8.84 which is
+                                              surprising given Saudi Arabia is 
+                                              a monarcy."), "Prehaps the method
+                                       of surveying via phone was only accesible
+                                       to people from a higher social and
+                                       socioeconomic status.Therefore the data
+                                       on some countries might not be
+                                       representative of the entire population."),
                         )
                         ),
                
                # third panel- the main model and connecting the data-sets
                
                tabPanel("Model",
-                        mainPanel(
-                        plotOutput("happiness_agreement", height = "600px",
-                                   width = "500px"),
-                        br(),
-                        br(),
-                        h3("The Relation Between Gender Inequality, Perceived
-                           Freedom, and Happiness"),
+                        h2(strong("Connecting The Pieces")),
+                         p("In this page I will explore the connection
+                         between opinions of gender inequality,
+                         measured by percent of agreement to
+                         inequality questions explored in the
+                         World Value Survey tab, and the perceived
+                         happiness and freedom to make life choices
+                         measured from questions asked in the World 
+                           Happiness Report."),
+                        h3(strong("Predictive Model")),
                         br(),
                         p("This linear regression model explores the predicted
                           happiness score (from 1 to 10) given the perceived
                           freedom to make life choices (from 1 to 10) for two
                           levels of gender inequaity.", strong("In Pakistan 69%
                           of the people surveyed agreed with the ineqaulity
-                          questions, while in New Zealand ony 6% of the people
+                          questions, while in New Zealand only 6% of the people
                           agreed."), "In my model I included the two extremes
                           of agreement percentage and predicted the expected
                           happiness."),
+                        p(strong("The Math Behind the Model:")),
+                        withMathJax('$$ Happiness_i = \\beta_0 + \\beta_1Freedom_i + 
+                        \\beta_2Agreement_i + \\beta_3Freedom_i*Agreement_i +
+                           \\epsilon_i $$'),
                         br(),
-                        splitLayout(cellWidths = c("60%", "40%"),
-                        plotOutput("predicted_happiness"),
-                        htmlOutput("regression_happiness_agreement"))),
-                        sidebarPanel(h3("Combining The Peices:"),
-                                     p("In this page I will explore the connection
-                                       between opinions of gender inequality,
-                                       measured by percent of agreement to
-                                       inequality questions explored in the
-                                       World Value Survey tab, and the perceived
-                                       happiness and freedom to make life choices
-                                       measured from questions asked in the World
-                                       Happiness Report."))
-               ),
-               tabPanel("Model 2",
                         fluidRow(
-                            column(6,
+                            column(8,
                                    plotOutput("predicted_happiness")),
                             column(4,
-                                   htmlOutput("regression_happiness_agreement"))
+                                   htmlOutput("regression_happiness_agreement")),
+                        ),
+                        br(),
+                        br(),
+                        h3(strong("Total Agreement With Gender Inequality Statements")),
+                        br(),
+                        fluidRow(
+                            column(8,
+                                plotOutput("happiness_agreement", height = "600px")
+                            ),
+                            column(4,
+                                p("The plot to the left presents the total percent 
+                                  agreement by country, arranged from the lowest 
+                                  percent agreement to the highest. The columns 
+                                  are colored according to the average happiness 
+                                  score in a particular country.", strong("Light 
+                                  shade of blue corresponds to higher happiness value."),
+                                  "The observable trend is that",strong("countries
+                                  with higher inequality percentage have a lower
+                                  happiness score."))
+                            )
                         )
+
+               ),
+               tabPanel("About",
+                        h3(strong("Motivation")),
+                        p("My project explores levels of", strong("gender inequality in 
+                          different countries all over the world, and the 
+                          relation to the happiness in that country and the 
+                          perceived freedom to make life choices.")),
+                        p("To measure the level of gender inequality I examined 
+                          the percent agreement to inequaity statements from the",
+                          tags$a(href = "https://www.worldvaluessurvey.org/wvs.jsp",
+                                 "World Value Survey (Wave 7)."), "To measure the level of happiness
+                          and freedom to make life choices I used the",
+                          tags$a(href = "https://worldhappiness.report/",
+                                 "World Happiness Report.")),
+                        p("The general trend observed from my data analysis is 
+                          that countries which their citizend tend to agree more 
+                          with inequality statements, tend to be less happy, and 
+                          usually have a lower score for perceived freedom. Which
+                          is observed both in males and females although more 
+                          significant in females."),
+                        h4(strong("About Me")),
+                        p("My name is Shaked Leibovitz, I am a sophomore at Harvard
+                          concentration in Neuroscience and pre-med. I am passionate
+                          about promoting gender equality, and I beleive to first 
+                          step in doing so is to identify the discriminating thinking 
+                          patterns and work to change them, and thus to improve
+                          our community."),
+                        p("You can reach me at shakedleibovitz@college.harvard.edu."),
+                        p("My code for the Shiny App and the data analysis can 
+                          found at", tags$a(href = "https://github.com/Shakedi/final_proj_gov1005",
+                                         "My Github Account."))
+                     
                    
                )
                
@@ -400,10 +456,6 @@ server <- function(input, output, session) {
            q_plot(q31p)
        }
        else if(input$selected_question == 
-               "Being a housewife is just as fulfilling as working for pay."){
-           q_plot(q32p)
-       }
-       else if(input$selected_question == 
                "When jobs are scarce, men should have more right to a job than women."){
            q_plot(q33p)
        }
@@ -463,13 +515,13 @@ server <- function(input, output, session) {
    
    # a function the needs to run to get an html file 
    
-   getPage <- function() {
+   getPage1 <- function() {
        return(includeHTML("datasets/regression_wvs.html"))
    }
    
    # calling the regression html file
    
-   output$regression_gt <- renderUI({getPage()})
+   output$regression_gt <- renderUI({getPage1()})
    
    # the code for the interactive freedom map
    

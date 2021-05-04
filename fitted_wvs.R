@@ -141,7 +141,7 @@ Female_slope <- Perc_agree
 Male_intercept <- Intercept + Sex_male
 Male_slope <- Perc_agree + Interaction_term
 
-ggplot(y, aes(x = perc_agree, y = Control, color = Gender)) +
+ggplot(y, aes(x = agreement, y = Control, color = Gender)) +
   
   # Use geom_point to show the datapoints. 
   
