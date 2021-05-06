@@ -130,49 +130,72 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                
                tabPanel("Model",
                         h2(strong("Happiness, Freedom and Gender Inequality")),
-                        p("In this page I will explore the connection
-                         between opinions of gender inequality,
-                         measured by percent of agreement to
-                         inequality questions explored in the
-                         World Value Survey tab, and the perceived
-                         happiness and freedom to make life choices
-                         measured from questions asked in the World 
-                           Happiness Report."),
-                        p(strong("Predicted Happiness Given a Freedom Score and
-                                  Percent Agreement With Gender Inequality")),
-                        br(),
-                        p("This linear regression model explores the predicted
-                          happiness score (from 1 to 10) given the perceived
-                          freedom to make life choices (from 1 to 10) for two
-                          levels of gender inequaity.", strong("In Pakistan 69%
-                          of the people surveyed agreed with the ineqaulity
-                          questions, while in New Zealand only 6% of the people
-                          agreed."), "In my model I included the two extremes
-                          of agreement percentage and predicted the expected
-                          happiness."),
-                        p(strong("The Math Behind the Model:")),
-                        withMathJax('$$ Happiness_i = \\beta_0 + \\beta_1Freedom_i + 
-                        \\beta_2Agreement_i + \\beta_3Freedom_i*Agreement_i +
-                           \\epsilon_i $$'),
                         br(),
                         fluidRow(
                            column(8,
-                                  plotOutput("predicted_happiness")),
+                                  plotOutput("predicted_happiness"),
+                                  p(strong("The Math Behind the Model:")),
+                                  p(strong("Agreement Variable")," is the
+                                  percent of agreement with inequality statements
+                                  asked by the World Value Survey (questions are
+                                  detailed in the World Value Survey tab).",
+                                  strong("Freedom Variable"),"is the freedom score
+                                  by country from 1 to 10 according to World Happiness
+                                  Report."),
+                                  p("On the Regression Table to the right you can view 
+                             the Beta variables and their confidence interval."),
+                                  withMathJax('$$ Happiness_i = \\beta_0 + \\beta_1Freedom_i + 
+                           \\beta_2Agreement_i + \\beta_3Freedom_i*Agreement_i +
+                           \\epsilon_i $$')
+                           ),
                            column(4,
-                                  htmlOutput("regression_happiness_agreement")),
+                                  h4(strong("Predicted Happiness in Relation to Gender
+                                     Inequality and Freedom")),
+                                  p(strong("In countries with low gender inequality there 
+                                  is a positive correlation between happiness and freedom."),
+                                  "But in counties in which gender inequality is high 
+                                  even if freedom is high happiness does not 
+                                  change significantly"),
+                                  p("This linear regression model explores the 
+                                  predicted happiness score given the perceived 
+                                  freedom to make life choices for two levels of 
+                                  gender inequaity.",
+                                  strong("In Pakistan 69% of the people surveyed 
+                                  agreed with the ineqaulity questions, while in 
+                                  New Zealand only 6% of the people agreed."), 
+                                  "In my model I included the two extremes of 
+                                  agreement percentage and predicted the expected
+                                  happiness."),
+                           br(),
+                           htmlOutput("regression_happiness_agreement")),
+                             
                         ),
                         br(),
-                        br(),
                         h3(strong("Total Agreement With Gender Inequality Statements")),
-                        br(),
                         fluidRow(
                            column(8,
                                   plotOutput("happiness_agreement", height = "600px")
                            ),
                            column(4,
-                                  p("The plot to the left presents the total percent 
-                                  agreement by country, arranged from the lowest 
-                                  percent agreement to the highest. The columns 
+                                  h4(strong("About The Plot:")),
+                                  p("The plot to the left presents the",strong("total percent 
+                                  agreement with the six gender inequaily
+                                  statements:")),
+                                  p("1) When a mother works for pay, the children 
+                                    suffer."),
+                                  p("2) On the whole, men make better political 
+                                    leaders than women do."),
+                                  p("3) A university education is more important
+                                    for a boy than for a girl."),
+                                  p("4) On the whole, men make better business
+                                    executives than women do."),
+                                  p("5) When jobs are scarce, men should have 
+                                    more right to a job than women."),
+                                  p("6) If a woman earns more money than her 
+                                    husband, it's almost certain to cause problems."),
+                                  br(),
+                                  p("Percent agreement is arranged from the lowest 
+                                   to the highest. The columns 
                                   are colored according to the average happiness 
                                   score in a particular country.", strong("Light 
                                   shade of blue corresponds to higher happiness value."),
@@ -359,11 +382,11 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                           significant in females."),
                         h4(strong("About Me")),
                         p("My name is Shaked Leibovitz, I am a sophomore at Harvard
-                          concentration in Neuroscience and pre-med. I am passionate
-                          about promoting gender equality, and I beleive to first 
-                          step in doing so is to identify the discriminating thinking 
-                          patterns and work to change them, and thus to improve
-                          our community."),
+                          concentrating in Neuroscience and on the pre-med track. 
+                          I am passionate about promoting gender equality around 
+                          the world. I beleive the first step in doing so is to
+                          identify discriminating thinking patterns and try to
+                          change them, thus we will make our community a better place."),
                         p("You can reach me at shakedleibovitz@college.harvard.edu."),
                         p("My code for the Shiny App and the data analysis can 
                           found at", tags$a(href = "https://github.com/Shakedi/final_proj_gov1005",
@@ -575,7 +598,7 @@ server <- function(input, output, session) {
            geom_col(aes(fill = score)) +
            scale_x_continuous(labels = scales::percent_format(accuracy = 1),
                               n.breaks = 12) +
-           labs(title = "Percent Agreement with Gender Inequality Statements\n and The Happiness Score",
+           labs(title = "Percent Agreement with Gender Inequality Statements",
                 fill = "Happiness Score\nFrom 1 to 10",
                 x = "Percent of People Agreed",
                 y = NULL,
@@ -597,12 +620,13 @@ server <- function(input, output, session) {
                 y = "Freedom Score",
                 caption = "Sorces: World Happiness Report,
                 World Value Survey") +
-           scale_fill_discrete(name = "Gender Inequality",
+           scale_fill_discrete(name = "Gender\nInequality",
                                labels = c("6%", "70%"),
                                type = c("royalblue", "paleturquoise")) +
            scale_x_continuous(n.breaks = 9) +
            theme_classic() +
            theme(title = element_text(size = 14))
+           
    )
    
    # getting the regression table for my second predictive model:
