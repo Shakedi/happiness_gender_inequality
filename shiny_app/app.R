@@ -124,9 +124,67 @@ happiness_predict <- read_csv("datasets/happiness_predict.csv",
 
 ui <- fluidPage(theme = shinytheme("sandstone"),
 
-    navbarPage("Happiness, Freedom and Gender Equality",
+    navbarPage("Happiness, Freedom and Gender Inequality",
                
-               # panel 1
+               # the main panel- the model
+               
+               tabPanel("Model",
+                        h2(strong("Happiness, Freedom and Gender Inequality")),
+                        p("In this page I will explore the connection
+                         between opinions of gender inequality,
+                         measured by percent of agreement to
+                         inequality questions explored in the
+                         World Value Survey tab, and the perceived
+                         happiness and freedom to make life choices
+                         measured from questions asked in the World 
+                           Happiness Report."),
+                        p(strong("Predicted Happiness Given a Freedom Score and
+                                  Percent Agreement With Gender Inequality")),
+                        br(),
+                        p("This linear regression model explores the predicted
+                          happiness score (from 1 to 10) given the perceived
+                          freedom to make life choices (from 1 to 10) for two
+                          levels of gender inequaity.", strong("In Pakistan 69%
+                          of the people surveyed agreed with the ineqaulity
+                          questions, while in New Zealand only 6% of the people
+                          agreed."), "In my model I included the two extremes
+                          of agreement percentage and predicted the expected
+                          happiness."),
+                        p(strong("The Math Behind the Model:")),
+                        withMathJax('$$ Happiness_i = \\beta_0 + \\beta_1Freedom_i + 
+                        \\beta_2Agreement_i + \\beta_3Freedom_i*Agreement_i +
+                           \\epsilon_i $$'),
+                        br(),
+                        fluidRow(
+                           column(8,
+                                  plotOutput("predicted_happiness")),
+                           column(4,
+                                  htmlOutput("regression_happiness_agreement")),
+                        ),
+                        br(),
+                        br(),
+                        h3(strong("Total Agreement With Gender Inequality Statements")),
+                        br(),
+                        fluidRow(
+                           column(8,
+                                  plotOutput("happiness_agreement", height = "600px")
+                           ),
+                           column(4,
+                                  p("The plot to the left presents the total percent 
+                                  agreement by country, arranged from the lowest 
+                                  percent agreement to the highest. The columns 
+                                  are colored according to the average happiness 
+                                  score in a particular country.", strong("Light 
+                                  shade of blue corresponds to higher happiness value."),
+                                    "The observable trend is that",strong("countries
+                                  with higher inequality percentage have a lower
+                                  happiness score."))
+                           )
+                        )
+                        
+               ),
+               
+               # panel 2
                # examines questions asked in the world value survey
                # I created two panels within the navBar to make my app more
                # organized and less packed. 
@@ -222,7 +280,7 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                
                ),
                
-               # panel 2
+               # panel 3 - world happiness report
                
                tabPanel("World Happiness Report",
                         h3("World Happiness Report Data"),
@@ -278,62 +336,8 @@ ui <- fluidPage(theme = shinytheme("sandstone"),
                         )
                         ),
                
-               # third panel- the main model and connecting the data-sets
+              # the about panel
                
-               tabPanel("Model",
-                        h2(strong("Connecting The Pieces")),
-                         p("In this page I will explore the connection
-                         between opinions of gender inequality,
-                         measured by percent of agreement to
-                         inequality questions explored in the
-                         World Value Survey tab, and the perceived
-                         happiness and freedom to make life choices
-                         measured from questions asked in the World 
-                           Happiness Report."),
-                        h3(strong("Predictive Model")),
-                        br(),
-                        p("This linear regression model explores the predicted
-                          happiness score (from 1 to 10) given the perceived
-                          freedom to make life choices (from 1 to 10) for two
-                          levels of gender inequaity.", strong("In Pakistan 69%
-                          of the people surveyed agreed with the ineqaulity
-                          questions, while in New Zealand only 6% of the people
-                          agreed."), "In my model I included the two extremes
-                          of agreement percentage and predicted the expected
-                          happiness."),
-                        p(strong("The Math Behind the Model:")),
-                        withMathJax('$$ Happiness_i = \\beta_0 + \\beta_1Freedom_i + 
-                        \\beta_2Agreement_i + \\beta_3Freedom_i*Agreement_i +
-                           \\epsilon_i $$'),
-                        br(),
-                        fluidRow(
-                            column(8,
-                                   plotOutput("predicted_happiness")),
-                            column(4,
-                                   htmlOutput("regression_happiness_agreement")),
-                        ),
-                        br(),
-                        br(),
-                        h3(strong("Total Agreement With Gender Inequality Statements")),
-                        br(),
-                        fluidRow(
-                            column(8,
-                                plotOutput("happiness_agreement", height = "600px")
-                            ),
-                            column(4,
-                                p("The plot to the left presents the total percent 
-                                  agreement by country, arranged from the lowest 
-                                  percent agreement to the highest. The columns 
-                                  are colored according to the average happiness 
-                                  score in a particular country.", strong("Light 
-                                  shade of blue corresponds to higher happiness value."),
-                                  "The observable trend is that",strong("countries
-                                  with higher inequality percentage have a lower
-                                  happiness score."))
-                            )
-                        )
-
-               ),
                tabPanel("About",
                         h3(strong("Motivation")),
                         p("My project explores levels of", strong("gender inequality in 
@@ -587,17 +591,18 @@ server <- function(input, output, session) {
            ggplot(aes(x = Happiness, y = fct_reorder(Freedom, Happiness),
                       fill = Agreement)) +
            stat_slab(alpha = 0.8) +
-           labs(title = "Predicted Happiness Given a Freedom Score and\nPercent Agreement With Gender Inequality",
+           labs(title = "Happiness, Freedom and Gender Inequality",
                 subtitle = "Happiness is positively correlated with Freedom when Gender Inequality is low",
                 x = "Happiness Score",
                 y = "Freedom Score",
                 caption = "Sorces: World Happiness Report,
                 World Value Survey") +
-           scale_fill_discrete(name = "Percent Agreement\nwith Gender Inequality\nStatements",
+           scale_fill_discrete(name = "Gender Inequality",
                                labels = c("6%", "70%"),
                                type = c("royalblue", "paleturquoise")) +
            scale_x_continuous(n.breaks = 9) +
-           theme_classic()
+           theme_classic() +
+           theme(title = element_text(size = 14))
    )
    
    # getting the regression table for my second predictive model:
