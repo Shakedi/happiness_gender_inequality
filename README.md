@@ -1,4 +1,4 @@
-# Freedom and Gender Inequality
+# Happiness Freedom and Gender Inequality
 
 Project Website: https://shakedleibovitz.shinyapps.io/happiness_gender_inequality/
 
